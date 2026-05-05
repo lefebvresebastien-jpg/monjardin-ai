@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 
 export default function Home() {
   const [adresse, setAdresse] = useState('12 rue du Moulin')
@@ -84,12 +85,14 @@ export default function Home() {
 
       {/* RÉSULTAT JARVIS */}
       {resultat && (
-        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md border border-[#E8F5EE] mt-6">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl border border-[#E8F5EE] mt-6">
+          <div className="flex items-center gap-2 mb-6">
             <span className="text-2xl">🤖</span>
-            <span className="font-bold text-[#1A6640]">Jarvis — votre plan personnalisé</span>
+            <span className="font-bold text-xl text-[#1A6640]">Jarvis — votre plan personnalisé</span>
           </div>
-          <div className="text-sm text-[#1C1C18] leading-relaxed whitespace-pre-wrap">{resultat}</div>
+          <div className="prose prose-green max-w-none text-[#1C1C18]">
+            <ReactMarkdown>{resultat}</ReactMarkdown>
+          </div>
         </div>
       )}
 
