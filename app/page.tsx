@@ -60,8 +60,129 @@ export default function Home() {
         <p className="text-xl text-[#6B6B60] max-w-2xl mb-10 leading-relaxed">
           Entrez votre adresse — on récupère les cotes cadastrales officielles et Jarvis génère votre plan d'aménagement personnalisé en 30 secondes.
         </p>
-
-        {/* STATS */}
         <div className="flex gap-10 mb-12">
           <div className="text-center">
-            <div className="text-3xl font-bold text-[#1
+            <div className="text-3xl font-bold text-[#1A6640]">2 847</div>
+            <div className="text-sm text-[#6B6B60]">jardins créés</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-[#1A6640]">4,8★</div>
+            <div className="text-sm text-[#6B6B60]">note moyenne</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-[#1A6640]">30 sec</div>
+            <div className="text-sm text-[#6B6B60]">pour un plan complet</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-[#1A6640]">0€</div>
+            <div className="text-sm text-[#6B6B60]">pour commencer</div>
+          </div>
+        </div>
+
+        {/* FORMULAIRE */}
+        <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-lg border border-[#E8F5EE]">
+          <h2 className="text-xl font-bold text-[#1C1C18] mb-6 text-left">📍 Votre propriété</h2>
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-[#6B6B60] uppercase tracking-wider mb-2">Adresse</label>
+            <input type="text" value={adresse} onChange={e => setAdresse(e.target.value)}
+              placeholder="12 rue du Moulin"
+              className="w-full px-4 py-3 border border-[#E8F5EE] rounded-xl text-sm focus:outline-none focus:border-[#1A6640] bg-[#FAF7F2]"/>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="block text-xs font-semibold text-[#6B6B60] uppercase tracking-wider mb-2">Ville</label>
+              <input type="text" value={ville} onChange={e => setVille(e.target.value)}
+                placeholder="Quettehou"
+                className="w-full px-4 py-3 border border-[#E8F5EE] rounded-xl text-sm focus:outline-none focus:border-[#1A6640] bg-[#FAF7F2]"/>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#6B6B60] uppercase tracking-wider mb-2">Code postal</label>
+              <input type="text" value={codePostal} onChange={e => setCodePostal(e.target.value)}
+                placeholder="50630"
+                className="w-full px-4 py-3 border border-[#E8F5EE] rounded-xl text-sm focus:outline-none focus:border-[#1A6640] bg-[#FAF7F2]"/>
+            </div>
+          </div>
+          <div className="mb-6">
+            <label className="block text-xs font-semibold text-[#6B6B60] uppercase tracking-wider mb-2">Style souhaité</label>
+            <select value={style} onChange={e => setStyle(e.target.value)}
+              className="w-full px-4 py-3 border border-[#E8F5EE] rounded-xl text-sm focus:outline-none focus:border-[#1A6640] bg-[#FAF7F2]">
+              <option>🌿 Naturel Zen</option>
+              <option>🪵 Convivial & Terrasse</option>
+              <option>🏛️ Paysager Classique</option>
+              <option>☀️ Méditerranéen</option>
+              <option>🥕 Potager Mixte</option>
+            </select>
+          </div>
+          <button onClick={genererPlan} disabled={loading}
+            className="w-full py-4 bg-[#1A6640] text-white rounded-full font-semibold text-base hover:bg-[#2D8F5A] transition-all disabled:opacity-50 shadow-lg">
+            {loading ? '⏳ Jarvis analyse votre terrain...' : '✨ Générer mon plan gratuit →'}
+          </button>
+          <p className="text-center text-xs text-[#6B6B60] mt-3">
+            🔒 Données cadastrales officielles · Gratuit · Sans carte bancaire
+          </p>
+        </div>
+      </section>
+
+      {/* RÉSULTAT */}
+      {resultat && (
+        <section className="flex justify-center px-6 py-12 bg-[#FAF7F2]">
+          <div className="bg-white rounded-3xl shadow-xl p-10 w-full max-w-3xl border border-[#E8F5EE]">
+            <div className="flex items-center gap-3 mb-8 pb-6 border-b border-[#E8F5EE]">
+              <div className="w-12 h-12 bg-[#E8F5EE] rounded-2xl flex items-center justify-center text-2xl">🤖</div>
+              <div>
+                <div className="font-bold text-xl text-[#1A6640]">Jarvis — votre plan personnalisé</div>
+                <div className="text-sm text-[#6B6B60]">Généré par Claude · Adapté à votre région</div>
+              </div>
+            </div>
+            <div className="prose prose-green max-w-none text-[#1C1C18] leading-relaxed">
+              <ReactMarkdown>{resultat}</ReactMarkdown>
+            </div>
+            <div className="mt-8 pt-6 border-t border-[#E8F5EE] flex gap-3">
+              <button className="flex-1 py-3 bg-[#1A6640] text-white rounded-full font-medium text-sm hover:bg-[#2D8F5A] transition-all">
+                💾 Sauvegarder ce plan
+              </button>
+              <button className="flex-1 py-3 border border-[#E8F5EE] text-[#6B6B60] rounded-full font-medium text-sm hover:border-[#1A6640] hover:text-[#1A6640] transition-all">
+                🔄 Générer une variante
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* FEATURES */}
+      <section className="px-6 py-20 max-w-5xl mx-auto">
+        <h2 className="text-3xl font-bold text-center text-[#1C1C18] mb-4">Pourquoi MonJardin.ai ?</h2>
+        <p className="text-center text-[#6B6B60] mb-12">Tout ce que DrawMeAGarden faisait, en mieux et moins cher.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white rounded-2xl p-6 border border-[#E8F5EE] shadow-sm">
+            <div className="text-3xl mb-4">📐</div>
+            <h3 className="font-bold text-lg mb-2">Cotes cadastrales officielles</h3>
+            <p className="text-[#6B6B60] text-sm leading-relaxed">Les vraies dimensions de votre terrain depuis cadastre.gouv.fr.</p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 border border-[#E8F5EE] shadow-sm">
+            <div className="text-3xl mb-4">🤖</div>
+            <h3 className="font-bold text-lg mb-2">IA Claude — la meilleure du marché</h3>
+            <p className="text-[#6B6B60] text-sm leading-relaxed">Jarvis connaît votre région, votre climat, vos sols.</p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 border border-[#E8F5EE] shadow-sm">
+            <div className="text-3xl mb-4">💰</div>
+            <h3 className="font-bold text-lg mb-2">39€/an au lieu de 1 500€</h3>
+            <p className="text-[#6B6B60] text-sm leading-relaxed">Un architecte paysagiste coûte des milliers d'euros. Pas MonJardin.ai.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="bg-[#1C1C18] text-white py-10 px-8">
+        <div className="max-w-5xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#1A6640] rounded-lg flex items-center justify-center text-sm">🌿</div>
+            <span className="font-bold text-[#1A6640]">MonJardin.ai</span>
+          </div>
+          <div className="text-sm text-[#6B6B60]">© 2026 MonJardin.ai · Quettehou, Normandie</div>
+        </div>
+      </footer>
+
+    </main>
+  )
+}
