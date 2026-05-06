@@ -10,9 +10,12 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [resultat, setResultat] = useState('')
   const [imageUrl, setImageUrl] = useState('')
-
+const [nbGenerations, setNbGenerations] = useState(0)
+const [showPaywall, setShowPaywall] = useState(false)
   async function genererPlan() {
     setLoading(true)
+    if (nbGenerations >= 1) { setShowPaywall(true); setLoading(false); return }
+setNbGenerations(nbGenerations + 1)
     setResultat('')
     setImageUrl('')
 
@@ -122,7 +125,19 @@ export default function Home() {
           </p>
         </div>
       </section>
-
+{showPaywall && (
+  <section className="flex justify-center px-6 py-12">
+    <div className="bg-white rounded-3xl shadow-xl p-10 w-full max-w-lg border-2 border-[#1A6640] text-center">
+      <div className="text-5xl mb-4">🌿</div>
+      <h2 className="text-2xl font-bold text-[#1C1C18] mb-3">Vous avez utilise votre plan gratuit !</h2>
+      <p className="text-[#6B6B60] mb-6">Passez a Jardiner pour des plans illimites, des rendus HD et le suivi saisonnier.</p>
+      <a href="/tarifs" className="block w-full py-4 bg-[#1A6640] text-white rounded-full font-semibold text-lg hover:bg-[#2D8F5A] transition-all mb-3">
+        Voir les tarifs →
+      </a>
+      <p className="text-sm text-[#6B6B60]">A partir de 39€/an · Sans engagement</p>
+    </div>
+  </section>
+)}
       {(resultat || imageUrl) && (
         <section className="flex flex-col items-center px-6 py-12 bg-[#FAF7F2] gap-8">
           {imageUrl && (
