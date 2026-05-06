@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import Image from 'next/image'
 
 export default function Home() {
   const [adresse, setAdresse] = useState('')
@@ -11,16 +10,13 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [resultat, setResultat] = useState('')
   const [imageUrl, setImageUrl] = useState('')
-  const [loadingImage, setLoadingImage] = useState(false)
 
   async function genererPlan() {
     setLoading(true)
-    setLoadingImage(true)
     setResultat('')
     setImageUrl('')
 
     try {
-      // Génération texte + image en parallèle
       const [planResponse, imageResponse] = await Promise.all([
         fetch('/api/jarvis', {
           method: 'POST',
@@ -30,32 +26,23 @@ export default function Home() {
         fetch('/api/image', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            style,
-            ville,
-            zones: 'terrasse bois, pelouse, massifs fleuris, haie brise-vent, allée zen'
-          })
+          body: JSON.stringify({ style, ville, zones: 'terrasse bois, pelouse, massifs fleuris, haie brise-vent, allée zen' })
         })
       ])
 
       const planData = await planResponse.json()
       const imageData = await imageResponse.json()
-
       setResultat(planData.result)
       setImageUrl(imageData.imageUrl)
 
     } catch (e) {
       setResultat('Erreur — réessayez')
     }
-
     setLoading(false)
-    setLoadingImage(false)
   }
 
   return (
     <main className="min-h-screen bg-[#FAF7F2]">
-
-      {/* NAV */}
       <nav className="flex items-center justify-between px-8 py-4 bg-white border-b border-[#E8F5EE] sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-[#1A6640] rounded-xl flex items-center justify-center">
@@ -73,7 +60,6 @@ export default function Home() {
         </button>
       </nav>
 
-      {/* HERO */}
       <section className="flex flex-col items-center text-center px-6 py-20 bg-gradient-to-b from-[#E8F5EE] to-[#FAF7F2]">
         <div className="inline-flex items-center gap-2 bg-white border border-[#E8F5EE] rounded-full px-4 py-2 text-sm text-[#1A6640] font-medium mb-6 shadow-sm">
           <span>🌟</span> Le concurrent de DrawMeAGarden — en mieux
@@ -83,30 +69,15 @@ export default function Home() {
           <span className="text-[#1A6640] italic">conçu par l'IA</span>
         </h1>
         <p className="text-xl text-[#6B6B60] max-w-2xl mb-10 leading-relaxed">
-          Entrez votre adresse — Jarvis génère votre plan d'aménagement complet avec rendu visuel en 30 secondes.
+          Entrez votre adresse — Jarvis génère votre plan complet avec rendu visuel en 30 secondes.
         </p>
-
-        {/* STATS */}
         <div className="flex gap-10 mb-12">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-[#1A6640]">2 847</div>
-            <div className="text-sm text-[#6B6B60]">jardins créés</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-[#1A6640]">4,8★</div>
-            <div className="text-sm text-[#6B6B60]">note moyenne</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-[#1A6640]">30 sec</div>
-            <div className="text-sm text-[#6B6B60]">pour un plan complet</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-[#1A6640]">0€</div>
-            <div className="text-sm text-[#6B6B60]">pour commencer</div>
-          </div>
+          <div className="text-center"><div className="text-3xl font-bold text-[#1A6640]">2 847</div><div className="text-sm text-[#6B6B60]">jardins créés</div></div>
+          <div className="text-center"><div className="text-3xl font-bold text-[#1A6640]">4,8★</div><div className="text-sm text-[#6B6B60]">note moyenne</div></div>
+          <div className="text-center"><div className="text-3xl font-bold text-[#1A6640]">30 sec</div><div className="text-sm text-[#6B6B60]">pour un plan complet</div></div>
+          <div className="text-center"><div className="text-3xl font-bold text-[#1A6640]">0€</div><div className="text-sm text-[#6B6B60]">pour commencer</div></div>
         </div>
 
-        {/* FORMULAIRE */}
         <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-lg border border-[#E8F5EE]">
           <h2 className="text-xl font-bold text-[#1C1C18] mb-6 text-left">📍 Votre propriété</h2>
           <div className="mb-4">
@@ -150,33 +121,22 @@ export default function Home() {
         </div>
       </section>
 
-      {/* RÉSULTAT */}
-      {(resultat || loadingImage) && (
+      {(resultat || imageUrl) && (
         <section className="flex flex-col items-center px-6 py-12 bg-[#FAF7F2] gap-8">
-          
-          {/* IMAGE DALL-E */}
-          <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-3xl border border-[#E8F5EE]">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-[#E8F5EE] rounded-xl flex items-center justify-center text-xl">🎨</div>
-              <div>
-                <div className="font-bold text-lg text-[#1A6640]">Rendu visuel — Style {style}</div>
-                <div className="text-sm text-[#6B6B60]">Généré par DALL-E 3 · Inspiration visuelle</div>
-              </div>
-            </div>
-            {loadingImage && !imageUrl && (
-              <div className="w-full h-64 bg-[#E8F5EE] rounded-2xl flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-3xl mb-3">🎨</div>
-                  <div className="text-sm text-[#6B6B60]">Génération du rendu visuel...</div>
+          {imageUrl && (
+            <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-3xl border border-[#E8F5EE]">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-[#E8F5EE] rounded-xl flex items-center justify-center text-xl">🎨</div>
+                <div>
+                  <div className="font-bold text-lg text-[#1A6640]">Rendu visuel — Style {style}</div>
+                  <div className="text-sm text-[#6B6B60]">Généré par DALL-E 3 · Inspiration visuelle</div>
                 </div>
               </div>
-            )}
-            {imageUrl && (
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={imageUrl} alt="Rendu jardin" className="w-full rounded-2xl shadow-md"/>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* PLAN TEXTE */}
           {resultat && (
             <div className="bg-white rounded-3xl shadow-xl p-10 w-full max-w-3xl border border-[#E8F5EE]">
               <div className="flex items-center gap-3 mb-8 pb-6 border-b border-[#E8F5EE]">
@@ -185,3 +145,54 @@ export default function Home() {
                   <div className="font-bold text-xl text-[#1A6640]">Jarvis — votre plan complet</div>
                   <div className="text-sm text-[#6B6B60]">Généré par Claude · Adapté à votre région</div>
                 </div>
+              </div>
+              <div className="prose prose-green max-w-none text-[#1C1C18] leading-relaxed">
+                <ReactMarkdown>{resultat}</ReactMarkdown>
+              </div>
+              <div className="mt-8 pt-6 border-t border-[#E8F5EE] flex gap-3">
+                <button className="flex-1 py-3 bg-[#1A6640] text-white rounded-full font-medium text-sm hover:bg-[#2D8F5A] transition-all">
+                  💾 Sauvegarder ce plan
+                </button>
+                <button className="flex-1 py-3 border border-[#E8F5EE] text-[#6B6B60] rounded-full font-medium text-sm hover:border-[#1A6640] hover:text-[#1A6640] transition-all">
+                  🔄 Générer une variante
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="px-6 py-20 max-w-5xl mx-auto">
+        <h2 className="text-3xl font-bold text-center text-[#1C1C18] mb-4">Pourquoi MonJardin.ai ?</h2>
+        <p className="text-center text-[#6B6B60] mb-12">Tout ce que DrawMeAGarden faisait, en mieux et moins cher.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white rounded-2xl p-6 border border-[#E8F5EE] shadow-sm">
+            <div className="text-3xl mb-4">📐</div>
+            <h3 className="font-bold text-lg mb-2">Cotes cadastrales officielles</h3>
+            <p className="text-[#6B6B60] text-sm leading-relaxed">Les vraies dimensions de votre terrain depuis cadastre.gouv.fr.</p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 border border-[#E8F5EE] shadow-sm">
+            <div className="text-3xl mb-4">🎨</div>
+            <h3 className="font-bold text-lg mb-2">Rendu visuel IA</h3>
+            <p className="text-[#6B6B60] text-sm leading-relaxed">DALL-E 3 génère un rendu aquarelle professionnel de votre jardin.</p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 border border-[#E8F5EE] shadow-sm">
+            <div className="text-3xl mb-4">💰</div>
+            <h3 className="font-bold text-lg mb-2">39€/an au lieu de 1 500€</h3>
+            <p className="text-[#6B6B60] text-sm leading-relaxed">Un architecte paysagiste coûte des milliers d'euros. Pas MonJardin.ai.</p>
+          </div>
+        </div>
+      </section>
+
+      <footer className="bg-[#1C1C18] text-white py-10 px-8">
+        <div className="max-w-5xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#1A6640] rounded-lg flex items-center justify-center text-sm">🌿</div>
+            <span className="font-bold text-[#1A6640]">MonJardin.ai</span>
+          </div>
+          <div className="text-sm text-[#6B6B60]">© 2026 MonJardin.ai · Quettehou, Normandie</div>
+        </div>
+      </footer>
+    </main>
+  )
+}
