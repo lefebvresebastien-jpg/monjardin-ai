@@ -23,7 +23,7 @@ Format plan d'architecte paysagiste, très détaillé et réaliste.`
     quality: 'standard',
   })
 
-  const imageUrl = response.data[0].url
+  const imageUrl = response.data?.[0]?.url ?? ''
 
   return NextResponse.json({ imageUrl })
 }
