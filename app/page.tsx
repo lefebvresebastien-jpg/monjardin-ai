@@ -55,7 +55,7 @@ export default function Home() {
         <div className="hidden md:flex items-center gap-8 text-sm text-[#6B6B60]">
           <span className="cursor-pointer hover:text-[#1A6640]">Comment ca marche</span>
           <span className="cursor-pointer hover:text-[#1A6640]">Temoignages</span>
-          <span className="cursor-pointer hover:text-[#1A6640]">Tarifs</span>
+          <a href="/tarifs" className="cursor-pointer hover:text-[#1A6640]">Tarifs</a>
         </div>
         <button className="px-5 py-2 bg-[#1A6640] text-white rounded-full text-sm font-medium hover:bg-[#2D8F5A] transition-all">
           Commencer gratuitement
