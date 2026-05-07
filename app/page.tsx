@@ -2,6 +2,15 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 
+type Parcelle = {
+  id: string
+  section: string
+  numero: string
+  commune: string
+  surface: number
+  geometry: any
+}
+
 export default function Home() {
   const [adresse, setAdresse] = useState('')
   const [ville, setVille] = useState('')
@@ -10,36 +19,66 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [resultat, setResultat] = useState('')
   const [imageUrl, setImageUrl] = useState('')
-const [nbGenerations, setNbGenerations] = useState(0)
-const [showPaywall, setShowPaywall] = useState(false)
-  async function genererPlan() {
-    setLoading(true)
-    if (nbGenerations >= 1) { setShowPaywall(true); setLoading(false); return }
-setNbGenerations(nbGenerations + 1)
-    setResultat('')
-    setImageUrl('')
+  const [nbGenerations, setNbGenerations] = useState(0)
+  const [showPaywall, setShowPaywall] = useState(false)
+  const [parcelles, setParcelles] = useState<Parcelle[]>([])
+  const [parcellesSelectionnees, setParcellesSelectionnees] = useState<Set<string>>(new Set())
+  const [etape, setEtape] = useState<'formulaire' | 'parcelles' | 'resultat'>('formulaire')
 
+  function toggleParcelle(id: string) {
+    const newSet = new Set(parcellesSelectionnees)
+    if (newSet.has(id)) newSet.delete(id)
+    else newSet.add(id)
+    setParcellesSelectionnees(newSet)
+  }
+
+  function surfaceTotale() {
+    return parcelles
+      .filter(p => parcellesSelectionnees.has(p.id))
+      .reduce((sum, p) => sum + p.surface, 0)
+  }
+
+  async function chercherParcelles() {
+    if (!adresse || !ville || !codePostal) return
+    setLoading(true)
     try {
-      const planResponse = await fetch('/api/jarvis', {
+      const resp = await fetch('/api/jarvis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adresse, ville, codePostal, style })
       })
-      const planData = await planResponse.json()
-      setResultat(planData.result)
-
-      try {
-        const imageResponse = await fetch('/api/image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ style, ville, zones: 'terrasse bois, pelouse, massifs fleuris, haie brise-vent' })
-        })
-        const imageData = await imageResponse.json()
-        if (imageData.plans?.[0]?.url) setImageUrl(imageData.plans[0].url)
-      } catch (e) {
-        console.log('Image non disponible')
+      const data = await resp.json()
+      if (data.parcelles && data.parcelles.length > 0) {
+        setParcelles(data.parcelles)
+        // Pré-sélectionner la première parcelle
+        setParcellesSelectionnees(new Set([data.parcelles[0].id]))
+        setEtape('parcelles')
+      } else {
+        await genererPlanFinal(0)
       }
+    } catch (e) {
+      setResultat('Erreur - reessayez')
+    }
+    setLoading(false)
+  }
 
+  async function genererPlanFinal(surface: number) {
+    if (nbGenerations >= 1) { setShowPaywall(true); return }
+    setNbGenerations(nbGenerations + 1)
+    setLoading(true)
+    setResultat('')
+    setImageUrl('')
+    setEtape('resultat')
+
+    try {
+      const imageResponse = await fetch('/api/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ style, ville, surface, zones: 'terrasse bois, pelouse, massifs fleuris, haie brise-vent' })
+      })
+      const imageData = await imageResponse.json()
+      if (imageData.plans?.[0]?.url) setImageUrl(imageData.plans[0].url)
+      setResultat(`Plan généré pour ${ville} — terrain de ${surface} m²`)
     } catch (e) {
       setResultat('Erreur - reessayez')
     }
@@ -65,94 +104,165 @@ setNbGenerations(nbGenerations + 1)
         </button>
       </nav>
 
-      <section className="flex flex-col items-center text-center px-6 py-20 bg-gradient-to-b from-[#E8F5EE] to-[#FAF7F2]">
-        <div className="inline-flex items-center gap-2 bg-white border border-[#E8F5EE] rounded-full px-4 py-2 text-sm text-[#1A6640] font-medium mb-6 shadow-sm">
-          <span>🌟</span> Le concurrent de DrawMeAGarden - en mieux
-        </div>
-        <h1 className="text-5xl md:text-6xl font-bold text-[#1C1C18] mb-6 max-w-3xl leading-tight">
-          Votre jardin de reve,<br/>
-          <span className="text-[#1A6640] italic">concu par l'IA</span>
-        </h1>
-        <p className="text-xl text-[#6B6B60] max-w-2xl mb-10 leading-relaxed">
-          Entrez votre adresse - Jarvis genere votre plan complet avec rendu visuel en 30 secondes.
-        </p>
-        <div className="flex gap-10 mb-12">
-          <div className="text-center"><div className="text-3xl font-bold text-[#1A6640]">2 847</div><div className="text-sm text-[#6B6B60]">jardins crees</div></div>
-          <div className="text-center"><div className="text-3xl font-bold text-[#1A6640]">4,8★</div><div className="text-sm text-[#6B6B60]">note moyenne</div></div>
-          <div className="text-center"><div className="text-3xl font-bold text-[#1A6640]">30 sec</div><div className="text-sm text-[#6B6B60]">pour un plan complet</div></div>
-          <div className="text-center"><div className="text-3xl font-bold text-[#1A6640]">0€</div><div className="text-sm text-[#6B6B60]">pour commencer</div></div>
-        </div>
-
-        <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-lg border border-[#E8F5EE]">
-          <h2 className="text-xl font-bold text-[#1C1C18] mb-6 text-left">📍 Votre propriete</h2>
-          <div className="mb-4">
-            <label className="block text-xs font-semibold text-[#6B6B60] uppercase tracking-wider mb-2">Adresse</label>
-            <input type="text" value={adresse} onChange={e => setAdresse(e.target.value)}
-              placeholder="12 rue du Moulin"
-              className="w-full px-4 py-3 border border-[#E8F5EE] rounded-xl text-sm focus:outline-none focus:border-[#1A6640] bg-[#FAF7F2]"/>
+      {/* ÉTAPE 1 — Formulaire */}
+      {etape === 'formulaire' && (
+        <section className="flex flex-col items-center text-center px-6 py-20 bg-gradient-to-b from-[#E8F5EE] to-[#FAF7F2]">
+          <div className="inline-flex items-center gap-2 bg-white border border-[#E8F5EE] rounded-full px-4 py-2 text-sm text-[#1A6640] font-medium mb-6 shadow-sm">
+            <span>🌟</span> Le concurrent de DrawMeAGarden - en mieux
           </div>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div>
-              <label className="block text-xs font-semibold text-[#6B6B60] uppercase tracking-wider mb-2">Ville</label>
-              <input type="text" value={ville} onChange={e => setVille(e.target.value)}
-                placeholder="Quettehou"
-                className="w-full px-4 py-3 border border-[#E8F5EE] rounded-xl text-sm focus:outline-none focus:border-[#1A6640] bg-[#FAF7F2]"/>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#6B6B60] uppercase tracking-wider mb-2">Code postal</label>
-              <input type="text" value={codePostal} onChange={e => setCodePostal(e.target.value)}
-                placeholder="50630"
-                className="w-full px-4 py-3 border border-[#E8F5EE] rounded-xl text-sm focus:outline-none focus:border-[#1A6640] bg-[#FAF7F2]"/>
-            </div>
-          </div>
-          <div className="mb-6">
-            <label className="block text-xs font-semibold text-[#6B6B60] uppercase tracking-wider mb-2">Style souhaite</label>
-            <select value={style} onChange={e => setStyle(e.target.value)}
-              className="w-full px-4 py-3 border border-[#E8F5EE] rounded-xl text-sm focus:outline-none focus:border-[#1A6640] bg-[#FAF7F2]">
-              <option>Naturel Zen</option>
-              <option>Convivial et Terrasse</option>
-              <option>Paysager Classique</option>
-              <option>Mediterraneen</option>
-              <option>Potager Mixte</option>
-            </select>
-          </div>
-          <button onClick={genererPlan} disabled={loading}
-            className="w-full py-4 bg-[#1A6640] text-white rounded-full font-semibold text-base hover:bg-[#2D8F5A] transition-all disabled:opacity-50 shadow-lg">
-            {loading ? '⏳ Jarvis genere votre plan...' : '✨ Generer mon plan gratuit →'}
-          </button>
-          <p className="text-center text-xs text-[#6B6B60] mt-3">
-            🔒 Donnees cadastrales officielles · Gratuit · Sans carte bancaire
+          <h1 className="text-5xl md:text-6xl font-bold text-[#1C1C18] mb-6 max-w-3xl leading-tight">
+            Votre jardin de reve,<br/>
+            <span className="text-[#1A6640] italic">concu par l'IA</span>
+          </h1>
+          <p className="text-xl text-[#6B6B60] max-w-2xl mb-10 leading-relaxed">
+            Entrez votre adresse - Jarvis genere votre plan complet avec rendu visuel en 30 secondes.
           </p>
-        </div>
-      </section>
-{showPaywall && (
-  <section className="flex justify-center px-6 py-12">
-    <div className="bg-white rounded-3xl shadow-xl p-10 w-full max-w-lg border-2 border-[#1A6640] text-center">
-      <div className="text-5xl mb-4">🌿</div>
-      <h2 className="text-2xl font-bold text-[#1C1C18] mb-3">Vous avez utilise votre plan gratuit !</h2>
-      <p className="text-[#6B6B60] mb-6">Passez a Jardiner pour des plans illimites, des rendus HD et le suivi saisonnier.</p>
-      <a href="/tarifs" className="block w-full py-4 bg-[#1A6640] text-white rounded-full font-semibold text-lg hover:bg-[#2D8F5A] transition-all mb-3">
-        Voir les tarifs →
-      </a>
-      <p className="text-sm text-[#6B6B60]">A partir de 39€/an · Sans engagement</p>
-    </div>
-  </section>
-)}
-      {(resultat || imageUrl) && (
+          <div className="flex gap-10 mb-12">
+            <div className="text-center"><div className="text-3xl font-bold text-[#1A6640]">2 847</div><div className="text-sm text-[#6B6B60]">jardins crees</div></div>
+            <div className="text-center"><div className="text-3xl font-bold text-[#1A6640]">4,8★</div><div className="text-sm text-[#6B6B60]">note moyenne</div></div>
+            <div className="text-center"><div className="text-3xl font-bold text-[#1A6640]">30 sec</div><div className="text-sm text-[#6B6B60]">pour un plan complet</div></div>
+            <div className="text-center"><div className="text-3xl font-bold text-[#1A6640]">0€</div><div className="text-sm text-[#6B6B60]">pour commencer</div></div>
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-lg border border-[#E8F5EE]">
+            <h2 className="text-xl font-bold text-[#1C1C18] mb-6 text-left">📍 Votre propriete</h2>
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-[#6B6B60] uppercase tracking-wider mb-2">Adresse</label>
+              <input type="text" value={adresse} onChange={e => setAdresse(e.target.value)}
+                placeholder="12 rue du Moulin"
+                className="w-full px-4 py-3 border border-[#E8F5EE] rounded-xl text-sm focus:outline-none focus:border-[#1A6640] bg-[#FAF7F2]"/>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#6B6B60] uppercase tracking-wider mb-2">Ville</label>
+                <input type="text" value={ville} onChange={e => setVille(e.target.value)}
+                  placeholder="Quettehou"
+                  className="w-full px-4 py-3 border border-[#E8F5EE] rounded-xl text-sm focus:outline-none focus:border-[#1A6640] bg-[#FAF7F2]"/>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#6B6B60] uppercase tracking-wider mb-2">Code postal</label>
+                <input type="text" value={codePostal} onChange={e => setCodePostal(e.target.value)}
+                  placeholder="50630"
+                  className="w-full px-4 py-3 border border-[#E8F5EE] rounded-xl text-sm focus:outline-none focus:border-[#1A6640] bg-[#FAF7F2]"/>
+              </div>
+            </div>
+            <div className="mb-6">
+              <label className="block text-xs font-semibold text-[#6B6B60] uppercase tracking-wider mb-2">Style souhaite</label>
+              <select value={style} onChange={e => setStyle(e.target.value)}
+                className="w-full px-4 py-3 border border-[#E8F5EE] rounded-xl text-sm focus:outline-none focus:border-[#1A6640] bg-[#FAF7F2]">
+                <option>Naturel Zen</option>
+                <option>Convivial et Terrasse</option>
+                <option>Paysager Classique</option>
+                <option>Mediterraneen</option>
+                <option>Potager Mixte</option>
+              </select>
+            </div>
+            <button onClick={chercherParcelles} disabled={loading}
+              className="w-full py-4 bg-[#1A6640] text-white rounded-full font-semibold text-base hover:bg-[#2D8F5A] transition-all disabled:opacity-50 shadow-lg">
+              {loading ? '⏳ Recherche des parcelles...' : '✨ Generer mon plan gratuit →'}
+            </button>
+            <p className="text-center text-xs text-[#6B6B60] mt-3">
+              🔒 Donnees cadastrales officielles · Gratuit · Sans carte bancaire
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* ÉTAPE 2 — Sélection des parcelles */}
+      {etape === 'parcelles' && (
+        <section className="flex flex-col items-center px-6 py-16">
+          <div className="w-full max-w-lg">
+            <button onClick={() => setEtape('formulaire')} className="text-sm text-[#6B6B60] mb-6 hover:text-[#1A6640] flex items-center gap-1">
+              ← Modifier l'adresse
+            </button>
+            <h2 className="text-2xl font-bold text-[#1C1C18] mb-2">Quelles parcelles composent votre terrain ?</h2>
+            <p className="text-sm text-[#6B6B60] mb-6">Cochez toutes les parcelles qui font partie de votre terrain.</p>
+
+            <div className="flex flex-col gap-3 mb-6">
+              {parcelles.map((p, i) => (
+                <div key={p.id} onClick={() => toggleParcelle(p.id)}
+                  className={`flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                    parcellesSelectionnees.has(p.id)
+                      ? 'border-[#1A6640] bg-[#E8F5EE]'
+                      : 'border-[#E8F5EE] bg-white hover:border-[#1A6640]'
+                  }`}>
+                  <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                    parcellesSelectionnees.has(p.id) ? 'bg-[#1A6640] border-[#1A6640]' : 'border-[#6B6B60]'
+                  }`}>
+                    {parcellesSelectionnees.has(p.id) && <span className="text-white text-xs">✓</span>}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-[#1C1C18] flex items-center gap-2">
+                      Section {p.section} — Parcelle n°{p.numero}
+                      {i === 0 && <span className="text-xs bg-[#1A6640] text-white px-2 py-0.5 rounded-full">La plus proche</span>}
+                    </div>
+                    <div className="text-xs text-[#6B6B60] mt-0.5">{p.commune}</div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="font-bold text-xl text-[#1A6640]">{p.surface.toLocaleString('fr-FR')}</div>
+                    <div className="text-xs text-[#6B6B60]">m²</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Surface totale */}
+            <div className="bg-[#E8F5EE] rounded-2xl p-4 flex justify-between items-center mb-6 border border-[#1A6640]">
+              <div>
+                <div className="text-xs font-semibold text-[#1A6640] uppercase tracking-wider mb-1">Surface totale sélectionnée</div>
+                <div className="text-3xl font-bold text-[#1A6640]">{surfaceTotale().toLocaleString('fr-FR')} m²</div>
+              </div>
+              <div className="text-xs text-[#1A6640] opacity-70 text-right">✓ Source officielle<br/>cadastre.gouv.fr</div>
+            </div>
+
+            <button
+              onClick={() => genererPlanFinal(surfaceTotale())}
+              disabled={parcellesSelectionnees.size === 0 || loading}
+              className="w-full py-4 bg-[#1A6640] text-white rounded-full font-semibold text-base hover:bg-[#2D8F5A] transition-all disabled:opacity-50 shadow-lg">
+              {loading ? '⏳ Génération en cours...' : '✨ Confirmer et générer mon plan'}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* PAYWALL */}
+      {showPaywall && (
+        <section className="flex justify-center px-6 py-12">
+          <div className="bg-white rounded-3xl shadow-xl p-10 w-full max-w-lg border-2 border-[#1A6640] text-center">
+            <div className="text-5xl mb-4">🌿</div>
+            <h2 className="text-2xl font-bold text-[#1C1C18] mb-3">Vous avez utilise votre plan gratuit !</h2>
+            <p className="text-[#6B6B60] mb-6">Passez a Jardiner pour des plans illimites, des rendus HD et le suivi saisonnier.</p>
+            <a href="/tarifs" className="block w-full py-4 bg-[#1A6640] text-white rounded-full font-semibold text-lg hover:bg-[#2D8F5A] transition-all mb-3">
+              Voir les tarifs →
+            </a>
+            <p className="text-sm text-[#6B6B60]">A partir de 39€/an · Sans engagement</p>
+          </div>
+        </section>
+      )}
+
+      {/* ÉTAPE 3 — Résultats */}
+      {etape === 'resultat' && (resultat || imageUrl) && (
         <section className="flex flex-col items-center px-6 py-12 bg-[#FAF7F2] gap-8">
+          {loading && (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-4 animate-bounce">🌿</div>
+              <div className="font-medium text-[#1A6640]">Jarvis génère votre illustration...</div>
+              <div className="text-sm text-[#6B6B60] mt-2">Cela peut prendre 20-30 secondes</div>
+            </div>
+          )}
           {imageUrl && (
             <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-3xl border border-[#E8F5EE]">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-[#E8F5EE] rounded-xl flex items-center justify-center text-xl">🎨</div>
                 <div>
-                  <div className="font-bold text-lg text-[#1A6640]">Rendu visuel - Style {style}</div>
-                  <div className="text-sm text-[#6B6B60]">Genere par DALL-E 3 · Inspiration visuelle</div>
+                  <div className="font-bold text-lg text-[#1A6640]">Rendu visuel — Style {style}</div>
+                  <div className="text-sm text-[#6B6B60]">Genere par DALL-E 3 · Illustration isométrique</div>
                 </div>
               </div>
               <img src={imageUrl} alt="Rendu jardin" className="w-full rounded-2xl shadow-md"/>
             </div>
           )}
-          {resultat && (
+          {resultat && !loading && (
             <div className="bg-white rounded-3xl shadow-xl p-10 w-full max-w-3xl border border-[#E8F5EE]">
               <div className="flex items-center gap-3 mb-8 pb-6 border-b border-[#E8F5EE]">
                 <div className="w-12 h-12 bg-[#E8F5EE] rounded-2xl flex items-center justify-center text-2xl">🤖</div>
@@ -168,8 +278,8 @@ setNbGenerations(nbGenerations + 1)
                 <button className="flex-1 py-3 bg-[#1A6640] text-white rounded-full font-medium text-sm hover:bg-[#2D8F5A] transition-all">
                   💾 Sauvegarder ce plan
                 </button>
-                <button className="flex-1 py-3 border border-[#E8F5EE] text-[#6B6B60] rounded-full font-medium text-sm hover:border-[#1A6640] hover:text-[#1A6640] transition-all">
-                  🔄 Generer une variante
+                <button onClick={() => setEtape('formulaire')} className="flex-1 py-3 border border-[#E8F5EE] text-[#6B6B60] rounded-full font-medium text-sm hover:border-[#1A6640] hover:text-[#1A6640] transition-all">
+                  🔄 Nouveau plan
                 </button>
               </div>
             </div>
@@ -189,7 +299,7 @@ setNbGenerations(nbGenerations + 1)
           <div className="bg-white rounded-2xl p-6 border border-[#E8F5EE] shadow-sm">
             <div className="text-3xl mb-4">🎨</div>
             <h3 className="font-bold text-lg mb-2">Rendu visuel IA</h3>
-            <p className="text-[#6B6B60] text-sm leading-relaxed">DALL-E 3 genere un rendu aquarelle professionnel de votre jardin.</p>
+            <p className="text-[#6B6B60] text-sm leading-relaxed">DALL-E 3 genere un rendu isometrique professionnel de votre jardin.</p>
           </div>
           <div className="bg-white rounded-2xl p-6 border border-[#E8F5EE] shadow-sm">
             <div className="text-3xl mb-4">💰</div>

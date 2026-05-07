@@ -1,57 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
-  const { adresse, ville, codePostal, style } = await req.json();
-
-  const lat_approx = 48.8566;
-  const lon_approx = 2.3522;
-
-  const d = 0.0008;
-  const geom = {
-    type: 'Polygon',
-    coordinates: [[
-      [lon_approx - d, lat_approx - d],
-      [lon_approx + d, lat_approx - d],
-      [lon_approx + d, lat_approx + d],
-      [lon_approx - d, lat_approx + d],
-      [lon_approx - d, lat_approx - d],
-    ]],
-  };
+  const { adresse, ville, codePostal } = await req.json();
 
   try {
-    // Géocodage
+    // Étape 1 : Géocodage
     const geoResp = await fetch(
       `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(adresse + ' ' + codePostal + ' ' + ville)}&limit=1`
     );
     const geoData = await geoResp.json();
     const coords = geoData.features?.[0]?.geometry?.coordinates;
-    
-    let parcelles = [];
-    if (coords) {
-      const [lon, lat] = coords;
-      const cadastreResp = await fetch(
-        `https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify({
-          type: 'Polygon',
-          coordinates: [[
-            [lon - d, lat - d],
-            [lon + d, lat - d],
-            [lon + d, lat + d],
-            [lon - d, lat + d],
-            [lon - d, lat - d],
-          ]]
-        }))}&_limit=20`
-      );
-      const cadastreData = await cadastreResp.json();
-      parcelles = cadastreData.features || [];
+
+    if (!coords) {
+      return NextResponse.json({ result: `Adresse non trouvée`, parcelles: [] });
     }
 
-    const result = parcelles.length > 0
-      ? `${parcelles.length} parcelle(s) trouvée(s). Surface principale : ${parcelles[0].properties?.contenance ? parcelles[0].properties.contenance * 100 + ' m²' : 'non disponible'}`
-      : `Adresse localisée : ${ville}`;
+    const [lon, lat] = coords;
+    const d = 0.0008;
 
-    return NextResponse.json({ result });
+    // Étape 2 : Cadastre IGN
+    const geom = {
+      type: 'Polygon',
+      coordinates: [[
+        [lon - d, lat - d],
+        [lon + d, lat - d],
+        [lon + d, lat + d],
+        [lon - d, lat + d],
+        [lon - d, lat - d],
+      ]]
+    };
+
+    const cadastreResp = await fetch(
+      `https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify(geom))}&_limit=20`
+    );
+    const cadastreData = await cadastreResp.json();
+    const features = cadastreData.features || [];
+
+    // Étape 3 : Formater les parcelles avec vraie surface
+    // contenance = surface en ares (1 are = 100 m²)
+    const parcelles = features.map((f: any) => ({
+      id: `${f.properties.section}-${f.properties.numero}`,
+      section: f.properties.section,
+      numero: f.properties.numero,
+      commune: f.properties.nom_com,
+      surface: Math.round((f.properties.contenance || 0) * 100), // ares → m²
+      geometry: f.geometry,
+    })).filter((p: any) => p.surface > 0)
+      .sort((a: any, b: any) => b.surface - a.surface);
+
+    return NextResponse.json({
+      result: `${parcelles.length} parcelle(s) trouvée(s)`,
+      parcelles,
+      coords: { lat, lon }
+    });
 
   } catch (err: any) {
-    return NextResponse.json({ result: `Plan généré pour ${ville}` });
+    return NextResponse.json({ result: `Erreur: ${err.message}`, parcelles: [] });
   }
 }
