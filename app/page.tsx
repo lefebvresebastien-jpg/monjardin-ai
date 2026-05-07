@@ -35,7 +35,7 @@ setNbGenerations(nbGenerations + 1)
           body: JSON.stringify({ style, ville, zones: 'terrasse bois, pelouse, massifs fleuris, haie brise-vent' })
         })
         const imageData = await imageResponse.json()
-        if (imageData.imageUrl) setImageUrl(imageData.imageUrl)
+        if (imageData.plans?.[0]?.url) setImageUrl(imageData.plans[0].url)
       } catch (e) {
         console.log('Image non disponible')
       }
