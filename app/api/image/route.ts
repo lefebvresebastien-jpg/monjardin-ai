@@ -1,49 +1,77 @@
-import OpenAI from 'openai'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+const PLANS = [
+  {
+    nom: 'Naturel & Zen',
+    desc: 'natural zen garden, ornamental grasses, hydrangeas, stepping stone path, small wooden deck, soft flowing organic shapes, moss and ground cover',
+  },
+  {
+    nom: 'Convivial & Terrasse',
+    desc: 'large wooden terrace for outdoor dining, pergola with climbing roses, colorful flower borders, open central lawn, barbecue corner',
+  },
+  {
+    nom: 'Paysager & Prestige',
+    desc: 'formal garden design, central ornamental pond with water lilies, sculpted boxwood hedges, elegant stone paving, ornamental trees, curved borders',
+  },
+];
 
-export async function POST(request: NextRequest) {
-  const { style, ville, zones } = await request.json()
+const REGION_CONTEXT: Record<string, string> = {
+  normandie: 'Normandy France, hydrangeas, apple trees, lush green Atlantic vegetation',
+  bretagne: 'Brittany France coastal, wind-resistant plants, heather, maritime atmosphere',
+  paca: 'Provence France, lavender, olive trees, Mediterranean plants, warm sunlight',
+  idf: 'Ile-de-France, classic French garden plants, suburban setting',
+  default: 'French garden, varied regional plants',
+};
 
-  const stylePrompts: Record<string, string> = {
-    'Naturel Zen': 'bambous, graminées ondulantes, galets blancs, bassin zen, terrasse bois gris, pelouse naturelle, massifs de fougères et mousses',
-    'Convivial et Terrasse': 'grande terrasse composite, salon de jardin, barbecue, massifs de rosiers, gazon impeccable, éclairage LED, pergola bois',
-    'Paysager Classique': 'parterres symétriques, ifs taillés en boule, bassin central, allées gravillonnées, haies formelles, roses anciennes',
-    'Mediterraneen': 'oliviers, lavandes, cyprès, terrasse pierre naturelle, poterie terra cotta, garrigue, couleurs ocre et bleu',
-    'Potager Mixte': 'carrés potagers surélevés, serre en verre, composteur, chemin en bois, arbres fruitiers, herbes aromatiques',
+export async function POST(req: NextRequest) {
+  const { surface, region, style, ville } = await req.json();
+
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) {
+    return NextResponse.json({ error: 'Clé OpenAI manquante' }, { status: 500 });
   }
 
-  const styleDetail = stylePrompts[style] || stylePrompts['Naturel Zen']
+  const regionCtx = REGION_CONTEXT[region] || REGION_CONTEXT.default;
 
-  const prompt = `Professional landscape architecture watercolor rendering, bird's eye isometric view at 45 degrees, garden design plan for ${ville} Normandy France.
+  try {
+    const results = await Promise.all(
+      PLANS.map(async (plan) => {
+        const prompt = `Isometric architectural garden illustration, professional landscape design rendering, 
+3/4 top-down view, ${surface || 500}m² residential garden in ${ville || 'France'}, ${regionCtx},
+${plan.desc},
+cream off-white background (#FAF7F2), soft natural daylight with gentle shadows,
+lush realistic vegetation with detailed textures, warm wooden tones,
+high-end editorial illustration style, clean crisp lines, no people, no text, no labels,
+professional landscape architecture portfolio style`;
 
-Style: ${style} garden featuring ${styleDetail}.
+        const response = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${openaiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'dall-e-3',
+            prompt,
+            n: 1,
+            size: '1024x1024',
+            quality: 'hd',
+            style: 'natural',
+          }),
+        });
 
-Technical specifications:
-- Architectural watercolor illustration, hand-drawn quality
-- Perfect isometric projection, 45-degree angle view
-- Lush photorealistic vegetation with detailed textures
-- Natural shadows and light from top-left
-- Stone or composite pathways clearly visible
-- Surrounding hedge or fence boundary
-- Color palette: deep greens, warm earth tones, soft whites
-- Paper texture background, professional landscape architect presentation
-- Ultra detailed, 4K quality, sharp edges
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error?.message || `OpenAI: ${response.status}`);
+        }
 
-The garden should look like a professional French landscape architect's presentation drawing, similar to high-end garden design studios. Include realistic tree canopies with shadows, flower beds in bloom, and clear zone separation.`
+        const data = await response.json();
+        return { nom: plan.nom, url: data.data[0].url };
+      })
+    );
 
-  const response = await openai.images.generate({
-    model: 'dall-e-3',
-    prompt: prompt,
-    n: 1,
-    size: '1024x1024',
-    quality: 'hd',
-  })
-
-  const imageUrl = response.data?.[0]?.url ?? ''
-
-  return NextResponse.json({ imageUrl })
+    return NextResponse.json({ plans: results });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
