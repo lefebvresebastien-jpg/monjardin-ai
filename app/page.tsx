@@ -60,7 +60,7 @@ export default function Home() {
       if (data.satelliteUrl) setSatelliteUrl(data.satelliteUrl)
       if (data.parcelles && data.parcelles.length > 0) {
         setParcelles(data.parcelles)
-        setParcellesSelectionnees(new Set([data.parcelles[0].id]))
+        setParcellesSelectionnees(new Set())
         setEtape('parcelles')
       } else {
         await genererPlanFinal(0, [])
