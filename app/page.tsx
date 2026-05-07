@@ -25,6 +25,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [resultat, setResultat] = useState('')
   const [imageUrl, setImageUrl] = useState('')
+  const [satelliteUrl, setSatelliteUrl] = useState('')
   const [nbGenerations, setNbGenerations] = useState(0)
   const [showPaywall, setShowPaywall] = useState(false)
   const [parcelles, setParcelles] = useState<Parcelle[]>([])
@@ -56,6 +57,7 @@ export default function Home() {
       })
       const data = await resp.json()
       if (data.batiments) setBatiments(data.batiments)
+      if (data.satelliteUrl) setSatelliteUrl(data.satelliteUrl)
       if (data.parcelles && data.parcelles.length > 0) {
         setParcelles(data.parcelles)
         setParcellesSelectionnees(new Set([data.parcelles[0].id]))
@@ -178,18 +180,27 @@ export default function Home() {
       {/* ÉTAPE 2 — Sélection des parcelles */}
       {etape === 'parcelles' && (
         <section className="flex flex-col items-center px-6 py-16">
-          <div className="w-full max-w-lg">
+          <div className="w-full max-w-2xl">
             <button onClick={() => setEtape('formulaire')} className="text-sm text-[#6B6B60] mb-6 hover:text-[#1A6640] flex items-center gap-1">
               ← Modifier l'adresse
             </button>
             <h2 className="text-2xl font-bold text-[#1C1C18] mb-2">Quelles parcelles composent votre terrain ?</h2>
             <p className="text-sm text-[#6B6B60] mb-6">Cochez toutes les parcelles qui font partie de votre terrain.</p>
 
-            {/* Info bâtiments détectés */}
+            {/* Photo satellite */}
+            {satelliteUrl && (
+              <div className="mb-6 rounded-2xl overflow-hidden border-2 border-[#1A6640] shadow-lg">
+                <div className="bg-[#1A6640] px-4 py-2 flex items-center gap-2">
+                  <span className="text-white text-sm font-medium">🛰️ Vue satellite de votre terrain</span>
+                </div>
+                <img src={satelliteUrl} alt="Vue satellite" className="w-full"/>
+              </div>
+            )}
+
             {batiments.length > 0 && (
               <div className="bg-[#E8F5EE] rounded-xl p-3 mb-4 flex items-center gap-2 text-sm text-[#1A6640]">
                 <span>🏠</span>
-                <span>{batiments.length} bâtiment(s) détecté(s) sur cette zone — intégré(s) au plan</span>
+                <span>{batiments.length} bâtiment(s) détecté(s) — intégré(s) au plan DALL-E</span>
               </div>
             )}
 
@@ -264,20 +275,36 @@ export default function Home() {
               <div className="text-sm text-[#6B6B60] mt-2">Intégration de la maison et du terrain · 20-30 secondes</div>
             </div>
           )}
-          {imageUrl && !loading && (
-            <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-3xl border border-[#E8F5EE]">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-[#E8F5EE] rounded-xl flex items-center justify-center text-xl">🎨</div>
-                <div>
-                  <div className="font-bold text-lg text-[#1A6640]">Rendu visuel — Style {style}</div>
-                  <div className="text-sm text-[#6B6B60]">Genere par DALL-E 3 · Maison et terrain intégrés</div>
-                </div>
+
+          {!loading && (imageUrl || satelliteUrl) && (
+            <div className="w-full max-w-4xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Photo satellite — état actuel */}
+                {satelliteUrl && (
+                  <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-[#E8F5EE]">
+                    <div className="bg-[#1C1C18] px-4 py-3 flex items-center gap-2">
+                      <span className="text-white text-sm font-medium">🛰️ Votre terrain aujourd'hui</span>
+                    </div>
+                    <img src={satelliteUrl} alt="Vue satellite actuelle" className="w-full"/>
+                    <div className="p-3 text-xs text-center text-[#6B6B60]">Source : Google Maps Satellite</div>
+                  </div>
+                )}
+                {/* Rendu DALL-E — jardin aménagé */}
+                {imageUrl && (
+                  <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-[#E8F5EE]">
+                    <div className="bg-[#1A6640] px-4 py-3 flex items-center gap-2">
+                      <span className="text-white text-sm font-medium">🎨 Votre jardin aménagé — Style {style}</span>
+                    </div>
+                    <img src={imageUrl} alt="Rendu jardin" className="w-full"/>
+                    <div className="p-3 text-xs text-center text-[#6B6B60]">Généré par DALL-E 3 · Illustration isométrique</div>
+                  </div>
+                )}
               </div>
-              <img src={imageUrl} alt="Rendu jardin" className="w-full rounded-2xl shadow-md"/>
             </div>
           )}
+
           {resultat && !loading && (
-            <div className="bg-white rounded-3xl shadow-xl p-10 w-full max-w-3xl border border-[#E8F5EE]">
+            <div className="bg-white rounded-3xl shadow-xl p-10 w-full max-w-4xl border border-[#E8F5EE]">
               <div className="flex items-center gap-3 mb-8 pb-6 border-b border-[#E8F5EE]">
                 <div className="w-12 h-12 bg-[#E8F5EE] rounded-2xl flex items-center justify-center text-2xl">🤖</div>
                 <div>
@@ -311,9 +338,9 @@ export default function Home() {
             <p className="text-[#6B6B60] text-sm leading-relaxed">Les vraies dimensions de votre terrain depuis cadastre.gouv.fr.</p>
           </div>
           <div className="bg-white rounded-2xl p-6 border border-[#E8F5EE] shadow-sm">
-            <div className="text-3xl mb-4">🎨</div>
-            <h3 className="font-bold text-lg mb-2">Rendu visuel IA</h3>
-            <p className="text-[#6B6B60] text-sm leading-relaxed">DALL-E 3 genere un rendu isometrique avec votre maison integree.</p>
+            <div className="text-3xl mb-4">🛰️</div>
+            <h3 className="font-bold text-lg mb-2">Photo satellite réelle</h3>
+            <p className="text-[#6B6B60] text-sm leading-relaxed">Avant/après : votre terrain aujourd'hui vs votre jardin aménagé.</p>
           </div>
           <div className="bg-white rounded-2xl p-6 border border-[#E8F5EE] shadow-sm">
             <div className="text-3xl mb-4">💰</div>

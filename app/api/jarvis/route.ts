@@ -17,8 +17,6 @@ export async function POST(req: NextRequest) {
 
     const [lon, lat] = coords;
     const d = 0.0008;
-
-    // Étape 2 : Cadastre IGN
     const geom = {
       type: 'Polygon',
       coordinates: [[
@@ -29,32 +27,24 @@ export async function POST(req: NextRequest) {
         [lon - d, lat - d],
       ]]
     };
+    const geomStr = encodeURIComponent(JSON.stringify(geom));
 
-    const cadastreResp = await fetch(
-      `https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify(geom))}&_limit=20`
-    );
+    // Étape 2 : Parcelles + Bâtiments en parallèle
+    const [cadastreResp, batimentResp] = await Promise.all([
+      fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom=${geomStr}&_limit=20`),
+      fetch(`https://apicarto.ign.fr/api/cadastre/batiment?geom=${geomStr}&_limit=20`)
+    ]);
+
     const cadastreData = await cadastreResp.json();
-    const features = cadastreData.features || [];
+    const batimentData = await batimentResp.json();
 
-    // Étape 3 : Formater les parcelles avec vraie surface
-    // contenance = surface en ares (1 are = 100 m²)
-    const parcelles = features.map((f: any) => ({
+    // Parcelles
+    const parcelles = (cadastreData.features || []).map((f: any) => ({
       id: `${f.properties.section}-${f.properties.numero}`,
       section: f.properties.section,
       numero: f.properties.numero,
       commune: f.properties.nom_com,
-      surface: Math.round((f.properties.contenance || 0) * 100), // ares → m²
+      surface: Math.round((f.properties.contenance || 0) * 100),
       geometry: f.geometry,
     })).filter((p: any) => p.surface > 0)
-      .sort((a: any, b: any) => b.surface - a.surface);
-
-    return NextResponse.json({
-      result: `${parcelles.length} parcelle(s) trouvée(s)`,
-      parcelles,
-      coords: { lat, lon }
-    });
-
-  } catch (err: any) {
-    return NextResponse.json({ result: `Erreur: ${err.message}`, parcelles: [] });
-  }
-}
+      .sort((a: any, b: any) => b.surface
