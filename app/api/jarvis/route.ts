@@ -47,4 +47,4 @@ export async function POST(req: NextRequest) {
       surface: Math.round((f.properties.contenance || 0) * 100),
       geometry: f.geometry,
     })).filter((p: any) => p.surface > 0)
-      .sort((a: any, b: any) => b.surface
+      .sort((a: any, b: any) => b.surface - a.surface);
