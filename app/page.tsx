@@ -11,6 +11,12 @@ type Parcelle = {
   geometry: any
 }
 
+type Batiment = {
+  surface: number
+  centroide: { lat: number, lon: number }
+  geometry: any
+}
+
 export default function Home() {
   const [adresse, setAdresse] = useState('')
   const [ville, setVille] = useState('')
@@ -22,6 +28,7 @@ export default function Home() {
   const [nbGenerations, setNbGenerations] = useState(0)
   const [showPaywall, setShowPaywall] = useState(false)
   const [parcelles, setParcelles] = useState<Parcelle[]>([])
+  const [batiments, setBatiments] = useState<Batiment[]>([])
   const [parcellesSelectionnees, setParcellesSelectionnees] = useState<Set<string>>(new Set())
   const [etape, setEtape] = useState<'formulaire' | 'parcelles' | 'resultat'>('formulaire')
 
@@ -48,13 +55,13 @@ export default function Home() {
         body: JSON.stringify({ adresse, ville, codePostal, style })
       })
       const data = await resp.json()
+      if (data.batiments) setBatiments(data.batiments)
       if (data.parcelles && data.parcelles.length > 0) {
         setParcelles(data.parcelles)
-        // Pré-sélectionner la première parcelle
         setParcellesSelectionnees(new Set([data.parcelles[0].id]))
         setEtape('parcelles')
       } else {
-        await genererPlanFinal(0)
+        await genererPlanFinal(0, [])
       }
     } catch (e) {
       setResultat('Erreur - reessayez')
@@ -62,7 +69,7 @@ export default function Home() {
     setLoading(false)
   }
 
-  async function genererPlanFinal(surface: number) {
+  async function genererPlanFinal(surface: number, bats: Batiment[]) {
     if (nbGenerations >= 1) { setShowPaywall(true); return }
     setNbGenerations(nbGenerations + 1)
     setLoading(true)
@@ -74,7 +81,7 @@ export default function Home() {
       const imageResponse = await fetch('/api/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ style, ville, surface, zones: 'terrasse bois, pelouse, massifs fleuris, haie brise-vent' })
+        body: JSON.stringify({ style, ville, surface, batiments: bats })
       })
       const imageData = await imageResponse.json()
       if (imageData.plans?.[0]?.url) setImageUrl(imageData.plans[0].url)
@@ -178,6 +185,14 @@ export default function Home() {
             <h2 className="text-2xl font-bold text-[#1C1C18] mb-2">Quelles parcelles composent votre terrain ?</h2>
             <p className="text-sm text-[#6B6B60] mb-6">Cochez toutes les parcelles qui font partie de votre terrain.</p>
 
+            {/* Info bâtiments détectés */}
+            {batiments.length > 0 && (
+              <div className="bg-[#E8F5EE] rounded-xl p-3 mb-4 flex items-center gap-2 text-sm text-[#1A6640]">
+                <span>🏠</span>
+                <span>{batiments.length} bâtiment(s) détecté(s) sur cette zone — intégré(s) au plan</span>
+              </div>
+            )}
+
             <div className="flex flex-col gap-3 mb-6">
               {parcelles.map((p, i) => (
                 <div key={p.id} onClick={() => toggleParcelle(p.id)}
@@ -206,7 +221,6 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Surface totale */}
             <div className="bg-[#E8F5EE] rounded-2xl p-4 flex justify-between items-center mb-6 border border-[#1A6640]">
               <div>
                 <div className="text-xs font-semibold text-[#1A6640] uppercase tracking-wider mb-1">Surface totale sélectionnée</div>
@@ -216,7 +230,7 @@ export default function Home() {
             </div>
 
             <button
-              onClick={() => genererPlanFinal(surfaceTotale())}
+              onClick={() => genererPlanFinal(surfaceTotale(), batiments)}
               disabled={parcellesSelectionnees.size === 0 || loading}
               className="w-full py-4 bg-[#1A6640] text-white rounded-full font-semibold text-base hover:bg-[#2D8F5A] transition-all disabled:opacity-50 shadow-lg">
               {loading ? '⏳ Génération en cours...' : '✨ Confirmer et générer mon plan'}
@@ -241,22 +255,22 @@ export default function Home() {
       )}
 
       {/* ÉTAPE 3 — Résultats */}
-      {etape === 'resultat' && (resultat || imageUrl) && (
+      {etape === 'resultat' && (
         <section className="flex flex-col items-center px-6 py-12 bg-[#FAF7F2] gap-8">
           {loading && (
-            <div className="text-center py-12">
-              <div className="text-4xl mb-4 animate-bounce">🌿</div>
-              <div className="font-medium text-[#1A6640]">Jarvis génère votre illustration...</div>
-              <div className="text-sm text-[#6B6B60] mt-2">Cela peut prendre 20-30 secondes</div>
+            <div className="text-center py-16">
+              <div className="text-5xl mb-4 animate-bounce">🌿</div>
+              <div className="font-medium text-[#1A6640] text-lg">Jarvis génère votre illustration...</div>
+              <div className="text-sm text-[#6B6B60] mt-2">Intégration de la maison et du terrain · 20-30 secondes</div>
             </div>
           )}
-          {imageUrl && (
+          {imageUrl && !loading && (
             <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-3xl border border-[#E8F5EE]">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-[#E8F5EE] rounded-xl flex items-center justify-center text-xl">🎨</div>
                 <div>
                   <div className="font-bold text-lg text-[#1A6640]">Rendu visuel — Style {style}</div>
-                  <div className="text-sm text-[#6B6B60]">Genere par DALL-E 3 · Illustration isométrique</div>
+                  <div className="text-sm text-[#6B6B60]">Genere par DALL-E 3 · Maison et terrain intégrés</div>
                 </div>
               </div>
               <img src={imageUrl} alt="Rendu jardin" className="w-full rounded-2xl shadow-md"/>
@@ -299,7 +313,7 @@ export default function Home() {
           <div className="bg-white rounded-2xl p-6 border border-[#E8F5EE] shadow-sm">
             <div className="text-3xl mb-4">🎨</div>
             <h3 className="font-bold text-lg mb-2">Rendu visuel IA</h3>
-            <p className="text-[#6B6B60] text-sm leading-relaxed">DALL-E 3 genere un rendu isometrique professionnel de votre jardin.</p>
+            <p className="text-[#6B6B60] text-sm leading-relaxed">DALL-E 3 genere un rendu isometrique avec votre maison integree.</p>
           </div>
           <div className="bg-white rounded-2xl p-6 border border-[#E8F5EE] shadow-sm">
             <div className="text-3xl mb-4">💰</div>
